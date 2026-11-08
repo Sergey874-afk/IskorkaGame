@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Волк ловит яйца</title>
+<title>Искорка ловит сообщения</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -12,21 +12,21 @@
        overflow:hidden;touch-action:none;user-select:none}
   #hud{display:flex;justify-content:space-between;width:100%;max-width:360px;
        padding:8px 16px;font-size:16px}
-  #game{background:linear-gradient(#87CEEB,#E0F6FF);border-radius:10px;
+  #game{background:linear-gradient(#2b2b4a, #14142b);border-radius:10px;
         display:block;touch-action:none;max-width:100%;height:auto}
   #overlay{position:absolute;inset:0;background:rgba(0,0,0,.8);display:none;
            flex-direction:column;align-items:center;justify-content:center;
            gap:16px;z-index:10;padding:20px;text-align:center}
   #overlay.show{display:flex}
   button{padding:12px 28px;font-size:17px;border:none;border-radius:10px;
-         background:#fc0;color:#1a1a2e;font-weight:bold;cursor:pointer}
+         background:#ffaa00;color:#1a1a2e;font-weight:bold;cursor:pointer}
   button:active{transform:scale(.95)}
 </style>
 </head>
 <body>
 
 <div id="hud">
-  <span>🥚 Яйца: <b id="score">0</b></span>
+  <span>💬 Собрано: <b id="score">0</b></span>
   <span>❤️ Жизни: <b id="lives">3</b></span>
 </div>
 
@@ -57,8 +57,13 @@ const W = canvas.width, H = canvas.height;
 let wolf, eggs, score, lives, running, spawnTimer, fallSpeed;
 const keys = { left:false, right:false };
 
+// Загрузка картинки Искорки
+const iskorkaImg = new Image();
+iskorkaImg.src = 'iskorka.png';
+
 function reset() {
-  wolf = { x: W/2 - 40, y: H - 80, w: 80, h: 70, speed: 6 };
+  // Размеры Искорки (подгоняем под картинку)
+  wolf = { x: W/2 - 45, y: H - 110, w: 90, h: 90, speed: 6 };
   eggs = []; score = 0; lives = 3; running = true;
   spawnTimer = 0; fallSpeed = 2;
   scoreEl.textContent = 0;
@@ -86,42 +91,60 @@ canvas.addEventListener('touchmove',  e => { e.preventDefault(); moveWolfTo(e.to
 canvas.addEventListener('mousedown', e => moveWolfTo(e.clientX));
 canvas.addEventListener('mousemove', e => { if (e.buttons === 1) moveWolfTo(e.clientX); });
 
+// Рисуем Искорку
 function drawWolf() {
-  const { x, y, w, h } = wolf;
-  ctx.fillStyle = '#6b6b6b';
-  ctx.beginPath(); ctx.roundRect(x, y + 15, w, h - 15, 8); ctx.fill();
-  ctx.fillStyle = '#8a8a8a';
-  ctx.beginPath(); ctx.arc(x + w/2, y + 20, 22, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#6b6b6b';
-  ctx.beginPath(); ctx.moveTo(x+w/2-18,y+10); ctx.lineTo(x+w/2-10,y-10); ctx.lineTo(x+w/2-2,y+10); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(x+w/2+2,y+10);  ctx.lineTo(x+w/2+10,y-10); ctx.lineTo(x+w/2+18,y+10); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(x+w/2-8,y+18,5,0,Math.PI*2); ctx.arc(x+w/2+8,y+18,5,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.arc(x+w/2-8,y+19,2.5,0,Math.PI*2); ctx.arc(x+w/2+8,y+19,2.5,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#333';
-  ctx.beginPath(); ctx.arc(x+w/2,y+30,4,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#8B4513';
-  ctx.fillRect(x+5, y+h-15, w-10, 12);
-  ctx.strokeStyle = '#5a2d0c'; ctx.lineWidth = 2;
-  for (let i = 1; i < 4; i++) {
+  if (iskorkaImg.complete) {
+    ctx.drawImage(iskorkaImg, wolf.x, wolf.y, wolf.w, wolf.h);
+  } else {
+    // Пока картинка грузится, рисуем кружок
+    ctx.fillStyle = '#ffaa00';
     ctx.beginPath();
-    ctx.moveTo(x+5+(w-10)*i/4, y+h-15);
-    ctx.lineTo(x+5+(w-10)*i/4, y+h-3);
-    ctx.stroke();
+    ctx.arc(wolf.x + wolf.w/2, wolf.y + wolf.h/2, wolf.w/2, 0, Math.PI*2);
+    ctx.fill();
   }
 }
 
+// Рисуем пузырь сообщения
+function drawBubble(x, y, r) {
+  // Белый пузырь
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  
+  // Форма пузыря (круг с хвостиком)
+  ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fill();
+  ctx.stroke();
+  
+  // Хвостик
+  ctx.beginPath();
+  ctx.moveTo(x - r*0.5, y + r*0.8);
+  ctx.lineTo(x - r*0.8, y + r*1.2);
+  ctx.lineTo(x - r*0.1, y + r*0.9);
+  ctx.fill();
+  ctx.stroke();
+
+  // Три чёрные точки внутри
+  ctx.fillStyle = '#333';
+  const dotR = r * 0.15;
+  const spacing = r * 0.4;
+  ctx.beginPath();
+  ctx.arc(x - spacing, y, dotR, 0, Math.PI*2);
+  ctx.arc(x, y, dotR, 0, Math.PI*2);
+  ctx.arc(x + spacing, y, dotR, 0, Math.PI*2);
+  ctx.fill();
+}
+
 function drawEgg(e) {
-  ctx.fillStyle = '#FFF8DC'; ctx.strokeStyle = '#D2B48C'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(e.x, e.y, e.r*0.75, e.r, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.beginPath(); ctx.ellipse(e.x-3, e.y-5, 3, 5, -0.3, 0, Math.PI*2); ctx.fill();
+  drawBubble(e.x, e.y, e.r);
 }
 
 function drawBg() {
-  ctx.fillStyle = '#7CB342'; ctx.fillRect(0, H-25, W, 25);
-  ctx.fillStyle = '#558B2F';
+  // Тёмный фон для контраста
+  ctx.fillStyle = '#14142b';
+  ctx.fillRect(0, H-25, W, 25);
+  ctx.fillStyle = '#2b2b4a';
   for (let i = 0; i < W; i += 60) {
     ctx.beginPath(); ctx.arc(i+30, H-25, 15, Math.PI, 0); ctx.fill();
   }
@@ -139,22 +162,26 @@ function loop(t) {
     if (spawnTimer > iv) {
       spawnTimer = 0;
       eggs.push({ x: 20 + Math.random()*(W-40), y: -20,
-                  r: 12 + Math.random()*6, speed: fallSpeed + Math.random()*1.5 });
+                  r: 18 + Math.random()*8, speed: fallSpeed + Math.random()*1.5 });
     }
     for (let i = eggs.length-1; i >= 0; i--) {
       const egg = eggs[i];
       egg.y += egg.speed * (dt/16);
-      if (egg.y+egg.r >= wolf.y+wolf.h-15 && egg.y-egg.r <= wolf.y+wolf.h &&
+      
+      // Проверка столкновения (ловит Искорка)
+      if (egg.y+egg.r >= wolf.y+wolf.h-20 && egg.y-egg.r <= wolf.y+wolf.h &&
           egg.x >= wolf.x && egg.x <= wolf.x+wolf.w) {
         eggs.splice(i,1); score++; scoreEl.textContent = score;
         fallSpeed = 2 + score*0.08; continue;
       }
+      
+      // Если упало вниз
       if (egg.y - egg.r > H-25) {
         eggs.splice(i,1); lives--; livesEl.textContent = lives;
         if (lives <= 0) {
           running = false;
-          overlayText.textContent = '🐺 Волк остался голодным!';
-          finalScore.textContent = 'Собрано яиц: ' + score;
+          overlayText.textContent = 'Искорка загрустила... 😢';
+          finalScore.textContent = 'Собрано сообщений: ' + score;
           overlay.classList.add('show');
         }
       }
