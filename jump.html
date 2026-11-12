@@ -55,7 +55,12 @@ const W = canvas.width, H = canvas.height;
 let player, platforms, score, running, gravity, jumpForce, totalHeight;
 
 // --- НАСТРОЙКИ ---
-const PLAYER_SIZE = 60; 
+// Уменьшили ширину хитбокса (было 60, стало 40), чтобы она не задевала облака краями картинки
+const PLAYER_W = 40; 
+const PLAYER_H = 60; 
+// Сдвиг картинки, чтобы она визуально была по центру хитбокса
+const IMG_OFFSET_X = 10; 
+
 const PLATFORM_W = 80;
 const PLATFORM_H = 20;
 const PLATFORM_COUNT = 10;
@@ -69,16 +74,16 @@ const keys = { left:false, right:false };
 
 function reset() {
   score = 0;
-  totalHeight = 0; // <-- ДОБАВЛЕНО: Общая накопленная высота
+  totalHeight = 0;
   running = true;
   gravity = 0.65;
   jumpForce = -14.5; 
   
   player = {
-    x: W/2 - PLAYER_SIZE/2,
+    x: W/2 - PLAYER_W/2,
     y: H - 150,
-    w: PLAYER_SIZE,
-    h: PLAYER_SIZE,
+    w: PLAYER_W,
+    h: PLAYER_H,
     vx: 0,
     vy: 0
   };
@@ -136,7 +141,8 @@ canvas.addEventListener('mouseup', handlePointerEnd);
 
 function drawPlayer() {
   if (iskorkaImg.complete && iskorkaImg.naturalWidth !== 0) {
-    ctx.drawImage(iskorkaImg, player.x, player.y, player.w, player.h);
+    // Рисуем картинку чуть шире хитбокса, чтобы она смотрелась красиво
+    ctx.drawImage(iskorkaImg, player.x - IMG_OFFSET_X, player.y, player.w + IMG_OFFSET_X*2, player.h);
   } else {
     ctx.fillStyle = '#ff4444';
     ctx.beginPath();
@@ -186,20 +192,23 @@ function loop(t) {
     player.vy += gravity * speed;
     player.y += player.vy * speed;
 
+    // АВТОМАТИЧЕСКИЙ ПРЫЖОК ПРИ КАСАНИИ
     for (let i = 0; i < platforms.length; i++) {
       const p = platforms[i];
       
+      // Если Искорка падает (vy > 0) и её ноги входят в облако (сверху)
       if (player.vy > 0 && 
           player.y + player.h >= p.y && 
-          player.y + player.h <= p.y + p.h + 15 && 
-          player.x + player.w - 10 > p.x && 
-          player.x + 10 < p.x + p.w) {
+          player.y + player.h <= p.y + p.h && // строго верхняя часть облака
+          player.x + player.w > p.x && 
+          player.x < p.x + p.w) {
         
-        player.vy = jumpForce; 
+        // Мгновенно отпрыгиваем и чуть-чуть поднимаем, чтобы не застрять
+        player.vy = jumpForce;
+        player.y = p.y - player.h; 
       }
     }
 
-    // 4. КАМЕРА И СЧЕТ
     const cameraThreshold = H * 0.6; 
     if (player.y < cameraThreshold) {
       const dy = cameraThreshold - player.y; 
@@ -207,10 +216,8 @@ function loop(t) {
       
       platforms.forEach(p => p.y += dy);
       
-      // Накапливаем высоту
       totalHeight += dy;
       
-      // Обновляем счет (1 очко = 10 пикселей высоты)
       let newScore = Math.floor(totalHeight / 10);
       if (newScore > score) {
         score = newScore;
@@ -218,7 +225,6 @@ function loop(t) {
       }
     }
 
-    // 5. ПЕРЕСПАВН
     platforms.forEach(p => {
       if (p.y > H + 50) {
         let topY = Math.min(...platforms.map(plat => plat.y));
@@ -227,7 +233,6 @@ function loop(t) {
       }
     });
 
-    // 6. ПРОИГРЫШ
     if (player.y > H + 50) {
       running = false;
       overlayText.textContent = 'Искорка упала! 😢';
