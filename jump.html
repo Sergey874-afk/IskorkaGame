@@ -52,27 +52,27 @@ const finalScore = document.getElementById('finalScore');
 const restartBtn = document.getElementById('restartBtn');
 
 const W = canvas.width, H = canvas.height;
-let player, platforms, score, running, gravity, jumpForce;
+let player, platforms, score, running, gravity, jumpForce, totalHeight;
 
 // --- НАСТРОЙКИ ---
 const PLAYER_SIZE = 60; 
 const PLATFORM_W = 80;
 const PLATFORM_H = 20;
 const PLATFORM_COUNT = 10;
-// Убираем жесткий GAP, чтобы облака генерировались на разной высоте
 const MIN_GAP = 60; 
 const MAX_GAP = 100;
 
 const iskorkaImg = new Image();
-iskorkaImg.src = 'iskorka1.png'; // Ваша картинка
+iskorkaImg.src = 'iskorka1.png'; 
 
 const keys = { left:false, right:false };
 
 function reset() {
   score = 0;
+  totalHeight = 0; // <-- ДОБАВЛЕНО: Общая накопленная высота
   running = true;
   gravity = 0.65;
-  jumpForce = -14.5; // Усилил прыжок, чтобы точно доставать
+  jumpForce = -14.5; 
   
   player = {
     x: W/2 - PLAYER_SIZE/2,
@@ -85,10 +85,8 @@ function reset() {
 
   platforms = [];
   
-  // 1. Стартовая платформа под игроком
   platforms.push({ x: W/2 - PLATFORM_W/2, y: H - 100, w: PLATFORM_W, h: PLATFORM_H });
   
-  // 2. Генерируем остальные платформы с рандомным отступом вверх
   let currentY = H - 100;
   for (let i = 1; i < PLATFORM_COUNT; i++) {
     currentY -= MIN_GAP + Math.random() * (MAX_GAP - MIN_GAP);
@@ -170,7 +168,6 @@ function loop(t) {
   const speed = dt / 16; 
 
   if (running) {
-    // 1. УПРАВЛЕНИЕ
     if (keys.left) player.vx = -6;
     else if (keys.right) player.vx = 6;
     else player.vx = 0;
@@ -183,19 +180,15 @@ function loop(t) {
 
     player.x += player.vx * speed;
     
-    // Телепорт по краям
     if (player.x + player.w < 0) player.x = W;
     if (player.x > W) player.x = -player.w;
 
-    // 2. ФИЗИКА
     player.vy += gravity * speed;
     player.y += player.vy * speed;
 
-    // 3. СТОЛКНОВЕНИЯ
     for (let i = 0; i < platforms.length; i++) {
       const p = platforms[i];
       
-      // Немного сузил проверку по X, чтобы не цепляться за пустоту
       if (player.vy > 0 && 
           player.y + player.h >= p.y && 
           player.y + player.h <= p.y + p.h + 15 && 
@@ -206,8 +199,7 @@ function loop(t) {
       }
     }
 
-    // 4. КАМЕРА
-    // Если Искорка поднимается выше 60% экрана, камера едет вниз
+    // 4. КАМЕРА И СЧЕТ
     const cameraThreshold = H * 0.6; 
     if (player.y < cameraThreshold) {
       const dy = cameraThreshold - player.y; 
@@ -215,18 +207,21 @@ function loop(t) {
       
       platforms.forEach(p => p.y += dy);
       
-      // Счет: за каждые 10 пикселей подъема даем 1 очко
-      score += Math.floor(dy / 10);
-      scoreEl.textContent = score;
+      // Накапливаем высоту
+      totalHeight += dy;
+      
+      // Обновляем счет (1 очко = 10 пикселей высоты)
+      let newScore = Math.floor(totalHeight / 10);
+      if (newScore > score) {
+        score = newScore;
+        scoreEl.textContent = score;
+      }
     }
 
-    // 5. ПЕРЕСПАВН ПЛАТФОРМ (Исправлено)
+    // 5. ПЕРЕСПАВН
     platforms.forEach(p => {
       if (p.y > H + 50) {
-        // Находим самое высокое облако в текущий момент
         let topY = Math.min(...platforms.map(plat => plat.y));
-        
-        // Ставим новое облако выше него на рандомное расстояние
         p.y = topY - (MIN_GAP + Math.random() * (MAX_GAP - MIN_GAP));
         p.x = Math.random() * (W - p.w);
       }
