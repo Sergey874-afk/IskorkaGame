@@ -268,7 +268,7 @@ function loop(t) {
 
   requestAnimationFrame(loop);
 }
-
+ 
 restartBtn.addEventListener('click', reset);
 reset();
 requestAnimationFrame(loop);
