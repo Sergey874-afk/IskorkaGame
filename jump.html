@@ -54,12 +54,9 @@ const restartBtn = document.getElementById('restartBtn');
 const W = canvas.width, H = canvas.height;
 let player, platforms, score, running, gravity, jumpForce, totalHeight;
 
-// --- НАСТРОЙКИ ---
-// Уменьшили ширину хитбокса (было 60, стало 40), чтобы она не задевала облака краями картинки
-const PLAYER_W = 40; 
-const PLAYER_H = 60; 
-// Сдвиг картинки, чтобы она визуально была по центру хитбокса
-const IMG_OFFSET_X = 10; 
+// --- НАСТРОЙКИ ИСКОРКИ ---
+const PLAYER_H = 70; // Высота персонажа в игре
+let PLAYER_W = 70;   // Ширина (рассчитается автоматически после загрузки картинки)
 
 const PLATFORM_W = 80;
 const PLATFORM_H = 20;
@@ -69,6 +66,13 @@ const MAX_GAP = 100;
 
 const iskorkaImg = new Image();
 iskorkaImg.src = 'iskorka1.png'; 
+
+// Как только картинка загрузится, мы узнаем её реальные пропорции
+iskorkaImg.onload = () => {
+  const ratio = iskorkaImg.naturalWidth / iskorkaImg.naturalHeight;
+  PLAYER_W = PLAYER_H * ratio; // Вычисляем ширину, чтобы не было искажений
+  player.w = PLAYER_W; // Обновляем ширину в игре
+};
 
 const keys = { left:false, right:false };
 
@@ -141,13 +145,11 @@ canvas.addEventListener('mouseup', handlePointerEnd);
 
 function drawPlayer() {
   if (iskorkaImg.complete && iskorkaImg.naturalWidth !== 0) {
-    // Рисуем картинку чуть шире хитбокса, чтобы она смотрелась красиво
-    ctx.drawImage(iskorkaImg, player.x - IMG_OFFSET_X, player.y, player.w + IMG_OFFSET_X*2, player.h);
+    // Рисуем ровно по хитбоксу, никаких сдвигов
+    ctx.drawImage(iskorkaImg, player.x, player.y, player.w, player.h);
   } else {
     ctx.fillStyle = '#ff4444';
-    ctx.beginPath();
-    ctx.arc(player.x + player.w/2, player.y + player.h/2, player.w/2, 0, Math.PI*2);
-    ctx.fill();
+    ctx.fillRect(player.x, player.y, player.w, player.h);
   }
 }
 
@@ -192,23 +194,28 @@ function loop(t) {
     player.vy += gravity * speed;
     player.y += player.vy * speed;
 
-    // АВТОМАТИЧЕСКИЙ ПРЫЖОК ПРИ КАСАНИИ
+    // --- ПРОВЕРКА СТОЛКНОВЕНИЯ СТРОГО ПО ЦЕНТРУ И НОГАМ ---
     for (let i = 0; i < platforms.length; i++) {
       const p = platforms[i];
       
-      // Если Искорка падает (vy > 0) и её ноги входят в облако (сверху)
+      // Берем центральную точку Искорки по X
+      const playerCenterX = player.x + player.w / 2;
+
+      // Проверяем, что она падает, её ноги в облаке, и её центр находится над облаком
       if (player.vy > 0 && 
           player.y + player.h >= p.y && 
-          player.y + player.h <= p.y + p.h && // строго верхняя часть облака
-          player.x + player.w > p.x && 
-          player.x < p.x + p.w) {
+          player.y + player.h <= p.y + p.h + 15 && // 15 пикселей запаса вниз, чтобы не проскочить
+          playerCenterX > p.x && 
+          playerCenterX < p.x + p.w) {
         
-        // Мгновенно отпрыгиваем и чуть-чуть поднимаем, чтобы не застрять
-        player.vy = jumpForce;
+        // Мгновенно отпрыгиваем
+        player.vy = jumpForce; 
+        // Выравниваем строго по верхней границе облака
         player.y = p.y - player.h; 
       }
     }
 
+    // 4. КАМЕРА И СЧЕТ
     const cameraThreshold = H * 0.6; 
     if (player.y < cameraThreshold) {
       const dy = cameraThreshold - player.y; 
@@ -225,6 +232,7 @@ function loop(t) {
       }
     }
 
+    // 5. ПЕРЕСПАВН
     platforms.forEach(p => {
       if (p.y > H + 50) {
         let topY = Math.min(...platforms.map(plat => plat.y));
@@ -233,6 +241,7 @@ function loop(t) {
       }
     });
 
+    // 6. ПРОИГРЫШ
     if (player.y > H + 50) {
       running = false;
       overlayText.textContent = 'Искорка упала! 😢';
