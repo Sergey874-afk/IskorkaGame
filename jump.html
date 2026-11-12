@@ -38,7 +38,6 @@
 </div>
 
 <script>
-// Инициализация Telegram WebApp
 if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
@@ -56,22 +55,23 @@ const W = canvas.width, H = canvas.height;
 let player, platforms, score, running, gravity, jumpForce;
 
 // --- НАСТРОЙКИ ---
-const PLAYER_SIZE = 50; // Размер Искорки
+const PLAYER_SIZE = 60; 
 const PLATFORM_W = 80;
 const PLATFORM_H = 20;
+const PLATFORM_COUNT = 12;
+const GAP = 80; // Расстояние между платформами по вертикали
 
 // Загрузка картинки Искорки (УКАЖИТЕ ТУТ ВАШЕ ИМЯ ФАЙЛА)
 const iskorkaImg = new Image();
-iskorkaImg.src = 'iskorka1.png'; 
+iskorkaImg.src = 'iskorka_jump.png'; // <--- Имя файла картинки
 
-// Управление
 const keys = { left:false, right:false };
 
 function reset() {
   score = 0;
   running = true;
   gravity = 0.6;
-  jumpForce = -12;
+  jumpForce = -13; // Сила прыжка
   
   player = {
     x: W/2 - PLAYER_SIZE/2,
@@ -83,14 +83,15 @@ function reset() {
   };
 
   platforms = [];
-  // Стартовая платформа под игроком
+  
+  // Первая платформа ровно под игроком
   platforms.push({ x: W/2 - PLATFORM_W/2, y: H - 100, w: PLATFORM_W, h: PLATFORM_H });
   
-  // Генерируем остальные платформы
-  for (let i = 1; i < 10; i++) {
+  // Генерируем остальные платформы вверх
+  for (let i = 1; i < PLATFORM_COUNT; i++) {
     platforms.push({
       x: Math.random() * (W - PLATFORM_W),
-      y: H - 100 - (i * 80), // Расстояние между платформами
+      y: H - 100 - (i * GAP),
       w: PLATFORM_W,
       h: PLATFORM_H
     });
@@ -100,7 +101,7 @@ function reset() {
   overlay.classList.remove('show');
 }
 
-// Слушатели клавиатуры
+// Управление с клавиатуры
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
   if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
@@ -110,28 +111,22 @@ document.addEventListener('keyup', e => {
   if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
 });
 
-// Управление касанием/мышью (движение за пальцем)
+// Управление мышью/тачем
 let isTouching = false;
 let touchX = 0;
 
 function handlePointerStart(e) {
   isTouching = true;
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  touchX = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-  touchX *= scaleX;
+  touchX = ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * (canvas.width / rect.width);
 }
 function handlePointerMove(e) {
   if (!isTouching) return;
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  touchX = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-  touchX *= scaleX;
+  touchX = ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * (canvas.width / rect.width);
 }
-function handlePointerEnd() {
-  isTouching = false;
-}
+function handlePointerEnd() { isTouching = false; }
 
 canvas.addEventListener('touchstart', handlePointerStart, {passive:false});
 canvas.addEventListener('touchmove', handlePointerMove, {passive:false});
@@ -140,13 +135,10 @@ canvas.addEventListener('mousedown', handlePointerStart);
 canvas.addEventListener('mousemove', handlePointerMove);
 canvas.addEventListener('mouseup', handlePointerEnd);
 
-// Отрисовка Искорки
 function drawPlayer() {
-  // Если картинка загрузилась - рисуем её
   if (iskorkaImg.complete && iskorkaImg.naturalWidth !== 0) {
     ctx.drawImage(iskorkaImg, player.x, player.y, player.w, player.h);
   } else {
-    // Иначе рисуем красный кружок
     ctx.fillStyle = '#ff4444';
     ctx.beginPath();
     ctx.arc(player.x + player.w/2, player.y + player.h/2, player.w/2, 0, Math.PI*2);
@@ -154,100 +146,97 @@ function drawPlayer() {
   }
 }
 
-// Отрисовка облака-платформы
 function drawPlatform(p) {
   ctx.fillStyle = '#fff';
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 2;
   ctx.beginPath();
   
-  // Рисуем облако из нескольких кругов
+  // Рисуем облако
   ctx.arc(p.x + 15, p.y + 10, 15, 0, Math.PI*2);
-  ctx.arc(p.x + 35, p.y + 5, 18, 0, Math.PI*2);
-  ctx.arc(p.x + 60, p.y + 12, 14, 0, Math.PI*2);
-  ctx.rect(p.x + 15, p.y + 10, 50, 10); // Соединяем основания
+  ctx.arc(p.x + 40, p.y + 5, 18, 0, Math.PI*2);
+  ctx.arc(p.x + 65, p.y + 12, 14, 0, Math.PI*2);
+  ctx.rect(p.x + 15, p.y + 10, 50, 10);
   
   ctx.fill();
-  // Обводка (можно убрать, если хотите без контура)
-  // ctx.stroke(); 
+  ctx.stroke();
   
-  // Линия снизу для четкости
-  ctx.fillStyle = '#e0e0e0';
-  ctx.fillRect(p.x, p.y + p.h - 5, p.w, 5);
+  // Тень снизу
+  ctx.fillStyle = '#d0d0d0';
+  ctx.fillRect(p.x + 5, p.y + p.h - 2, p.w - 10, 2);
 }
 
 let lastTime = 0;
 function loop(t) {
   const dt = Math.min(t - lastTime, 50); 
   lastTime = t;
-  const speedMultiplier = dt / 16;
+  const speed = dt / 16; // Множитель для стабильной скорости
 
   if (running) {
-    // --- УПРАВЛЕНИЕ ---
-    // Клавиатура
+    // 1. УПРАВЛЕНИЕ ПО ГОРИЗОНТАЛИ
     if (keys.left) player.vx = -6;
     else if (keys.right) player.vx = 6;
     else player.vx = 0;
 
-    // Тач (движение к пальцу)
     if (isTouching) {
       const diff = (touchX - (player.x + player.w/2));
-      if (Math.abs(diff) > 5) {
-        player.vx = Math.sign(diff) * 6;
-      } else {
-        player.vx = 0;
-      }
+      if (Math.abs(diff) > 10) player.vx = Math.sign(diff) * 6;
+      else player.vx = 0;
     }
 
-    // Физика игрока
-    player.x += player.vx * speedMultiplier;
+    player.x += player.vx * speed;
     
-    // Столкновение со стенами
-    if (player.x < 0) { player.x = 0; player.vx = 0; }
-    if (player.x + player.w > W) { player.x = W - player.w; player.vx = 0; }
+    // Ограничение по краям экрана (телепорт)
+    if (player.x + player.w < 0) player.x = W;
+    if (player.x > W) player.x = -player.w;
 
-    player.vy += gravity * speedMultiplier;
-    player.y += player.vy * speedMultiplier;
+    // 2. ФИЗИКА (Гравитация)
+    player.vy += gravity * speed;
+    player.y += player.vy * speed;
 
-    // --- ПЛАТФОРМЫ ---
+    // 3. СТОЛКНОВЕНИЯ С ПЛАТФОРМАМИ
     for (let i = 0; i < platforms.length; i++) {
       const p = platforms[i];
       
-      // Проверка, стоит ли игрок на платформе (только если падает)
+      // Проверяем, падает ли игрок и находится ли он на платформе
       if (player.vy > 0 && 
           player.y + player.h >= p.y && 
-          player.y + player.h <= p.y + p.h + 10 &&
-          player.x + player.w > p.x + 5 && 
-          player.x < p.x + p.w - 5) {
+          player.y + player.h <= p.y + p.h + 15 && // +15 прощает мелкие промахи
+          player.x + player.w > p.x + 10 && 
+          player.x < p.x + p.w - 10) {
         
-        player.vy = jumpForce;
+        player.vy = jumpForce; // Прыжок!
       }
     }
 
-    // Если игрок поднимается выше середины экрана
+    // 4. КАМЕРА И СЧЕТ (если Искорка выше середины экрана)
     if (player.y < H / 2) {
-      const dy = H / 2 - player.y;
-      player.y = H / 2;
+      const dy = (H / 2) - player.y; // Насколько высоко поднялась
+      player.y = H / 2; // Фиксируем на середине экрана
       
-      // Двигаем все платформы вниз
+      // Двигаем все платформы вниз (камера идет за игроком)
       platforms.forEach(p => p.y += dy);
       
-      // Счетчик
-      if (Math.floor(dy) > 0) {
-        score += Math.floor(dy / 10);
-        scoreEl.textContent = score;
-      }
+      // Начисляем очки за высоту
+      score += Math.floor(dy / 10);
+      scoreEl.textContent = score;
     }
 
-    // Генерация новых платформ
+    // 5. ПЕРЕСПАВН ПЛАТФОРМ
+    // Находим самую высокую платформу (у которой минимальный Y)
+    let topPlatformY = Math.min(...platforms.map(p => p.y));
+
     platforms.forEach(p => {
-      if (p.y > H) {
-        p.y = platforms[0].y - 80 - Math.random() * 40;
-        p.x = Math.random() * (W - p.w);
+      // Если платформа ушла ниже экрана
+      if (p.y > H + 50) {
+        // Ставим её выше самой верхней платформы
+        topPlatformY -= GAP;
+        p.y = topPlatformY;
+        p.x = Math.random() * (W - p.w); // Новое случайное место по X
       }
     });
 
-    // --- ПРОИГРЫШ ---
+    // 6. ПРОИГРЫШ
     if (player.y > H) {
       running = false;
       overlayText.textContent = 'Искорка упала! 😢';
@@ -259,16 +248,12 @@ function loop(t) {
   // --- ОТРИСОВКА ---
   ctx.clearRect(0, 0, W, H);
   
-  // Фон (градиент уже задан в CSS, но можно добавить пушистые облака на фоне)
-  // ctx.fillStyle = '#87CEEB';
-  // ctx.fillRect(0, 0, W, H);
-  
   platforms.forEach(drawPlatform);
   drawPlayer();
 
   requestAnimationFrame(loop);
 }
- 
+
 restartBtn.addEventListener('click', reset);
 reset();
 requestAnimationFrame(loop);
